@@ -29,11 +29,18 @@ app.prepare().then(() => {
   createServer((req, res) => {
     const parsedUrl = parse(req.url, true);
 
-    const rootStaticFiles = ["/favicon.ico"];
+    const rootStaticFiles = ["/favicon.ico", "pwa.png"];
 
     if (rootStaticFiles.indexOf(parsedUrl.pathname) > -1) {
       const path = join(__dirname, "public", parsedUrl.pathname);
       app.serverStatic(req, res, path);
+    } else if (parsedUrl.pathname === "/service-worker.js") {
+      const path = join(__dirname, ".next", "/service-worker.js");
+      if (!!res.sendFile) {
+        res.sendFile(join(__dirname, ".next", path));
+      } else {
+        handler(req, res, parsedUrl);
+      }
     } else {
       handler(req, res, parsedUrl);
     }
