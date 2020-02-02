@@ -22,15 +22,12 @@ type Props = StateProps & DispatchProps;
 const IndexPage: NextPage<Props> = ({ data, loadData, increase }) => {
   React.useEffect(() => {
     increase();
-    if (!data) {
-      loadData();
-    }
+
     return () => {};
   }, []);
   return (
     <div>
       <Counter />
-      <UserList />
     </div>
   );
 };
