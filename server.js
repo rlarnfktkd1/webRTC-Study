@@ -33,12 +33,12 @@ app.prepare().then(() => {
 
     if (rootStaticFiles.indexOf(parsedUrl.pathname) > -1) {
       const path = join(__dirname, "public", parsedUrl.pathname);
-      app.serverStatic(req, res, path);
+      app.serveStatic(req, res, path);
     } else if (parsedUrl.pathname === "/service-worker.js") {
       const path = join(__dirname, ".next", "/service-worker.js");
       if (!!res.sendFile) {
         res.sendFile(join(__dirname, ".next", path));
-        app.serverStatic(req, res, path);
+        app.serveStatic(req, res, path);
       } else {
         handler(req, res, parsedUrl);
       }
