@@ -38,6 +38,7 @@ app.prepare().then(() => {
       const path = join(__dirname, ".next", "/service-worker.js");
       if (!!res.sendFile) {
         res.sendFile(join(__dirname, ".next", path));
+        app.serverStatic(req, res, path);
       } else {
         handler(req, res, parsedUrl);
       }
