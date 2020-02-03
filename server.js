@@ -1,23 +1,10 @@
-/**
- * server.js
- *
- * You can use the default server.js by simply running `next`,
- * but a custom one is required to do paramaterized urls like
- * blog/:slug.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
- * BENEVOLENT WEB LLC BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
-
+const express = require("express");
 const { createServer } = require("http");
 const next = require("next");
 const { parse } = require("url");
 const { join } = require("path");
 const port = parseInt(process.env.PORT, 10) || 3000;
+
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
 
@@ -26,27 +13,77 @@ const routes = require("./routes");
 const handler = routes.getRequestHandler(app);
 
 app.prepare().then(() => {
-  createServer((req, res) => {
-    const parsedUrl = parse(req.url, true);
+  const server = express();
 
-    const rootStaticFiles = ["/favicon.ico", "pwa.png"];
+  server.get("/service-worker.js", (req, res) => {
+    app.serveStatic(req, res, "./.next/service-worker.js");
+  });
 
-    if (rootStaticFiles.indexOf(parsedUrl.pathname) > -1) {
-      const path = join(__dirname, "public", parsedUrl.pathname);
-      app.serveStatic(req, res, path);
-    } else if (parsedUrl.pathname === "/service-worker.js") {
-      const path = join(__dirname, ".next", "/service-worker.js");
-      if (!!res.sendFile) {
-        res.sendFile(join(__dirname, ".next", path));
-        app.serveStatic(req, res, path);
-      } else {
-        handler(req, res, parsedUrl);
-      }
-    } else {
-      handler(req, res, parsedUrl);
+  server.get("/favicon.ico", (req, res) => {
+    app.serveStatic(req, res, "./public/static/favicon.ico");
+  });
+
+  server.get("/pwa.png", (req, res) => {
+    app.serveStatic(req, res, "./public/static/pwa.png");
+  });
+
+  const serviceWorkers = [
+    {
+      filename: "service-worker.js",
+      path: "./.next/static/service-worker.js"
+    },
+    {
+      filename: "firebase-messaging-sw.js",
+      path: "./static/firebase-messaging-sw.js"
     }
-  }).listen(port, err => {
+  ];
+
+  serviceWorkers.forEach(({ filename, path }) => {
+    server.get(`/${filename}`, (req, res) => {
+      app.serveStatic(req, res, path);
+    });
+  });
+
+  server.get("*", (req, res) => {
+    return handler(req, res);
+  });
+
+  server.listen(port, err => {
     if (err) throw err;
     console.log(`> Ready on http://localhost:${port}`);
   });
 });
+
+// app.prepare().then(() => {
+//   createServer((req, res) => {
+//     const parsedUrl = parse(req.url, true);
+
+//     const rootStaticFiles = ["/favicon.ico", "pwa.png"];
+
+//     if (rootStaticFiles.indexOf(parsedUrl.pathname) > -1) {
+//       const path = join(__dirname, "public", parsedUrl.pathname);
+//       app.serveStatic(req, res, path);
+//     } else if (parsedUrl.pathname === "/firebase-messaging-sw.js") {
+//       const path = join(__dirname, "public", "/firebase-messaging-sw.js");
+//       if (!!res.sendFile) {
+//         res.sendFile(join(__dirname, "public", path));
+//         app.serveStatic(req, res, path);
+//       } else {
+//         handler(req, res, parsedUrl);
+//       }
+//     } else if (parsedUrl.pathname === "/service-worker.js") {
+//       const path = join(__dirname, ".next", "/service-worker.js");
+//       if (!!res.sendFile) {
+//         res.sendFile(join(__dirname, ".next", path));
+//         app.serveStatic(req, res, path);
+//       } else {
+//         handler(req, res, parsedUrl);
+//       }
+//     } else {
+//       handler(req, res, parsedUrl);
+//     }
+//   }).listen(port, err => {
+//     if (err) throw err;
+//     console.log(`> Ready on http://localhost:${port}`);
+//   });
+// });

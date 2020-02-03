@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import Counter from "../components/Counter/Counter";
 import { loadData } from "../store/placeholder/Placeholder.store";
 import { increase, increaseBy } from "../store/counter/counter.store";
+import { firebaseCloudMessaging } from "../../utils/webPush";
 
 import Placeholder from "../components/Placeholder/Placeholder";
 import withApollo from "../lib/withApollo";
@@ -22,6 +23,7 @@ type Props = StateProps & DispatchProps;
 const IndexPage: NextPage<Props> = ({ data, loadData, increase }) => {
   React.useEffect(() => {
     increase();
+    firebaseCloudMessaging.init();
 
     return () => {};
   }, []);
