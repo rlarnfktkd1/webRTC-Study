@@ -1,30 +1,92 @@
-const express = require("express");
-const { createServer } = require("http");
+const app = require("express")();
+const server = require("http").Server(app);
+const io = require("socket.io")(server);
 const next = require("next");
-const { parse } = require("url");
-const { join } = require("path");
 const port = parseInt(process.env.PORT, 10) || 3000;
-
+const {
+  addUser,
+  removeUser,
+  getUser,
+  existingRoom,
+  getUsersInRoom
+} = require("./utils/socket");
 const dev = process.env.NODE_ENV !== "production";
-const app = next({ dev });
+const nextApp = next({ dev });
 
 const routes = require("./routes");
 
-const handler = routes.getRequestHandler(app);
+const handler = routes.getRequestHandler(nextApp);
 
-app.prepare().then(() => {
-  const server = express();
+io.on("connection", socket => {
+  console.log("a user connected");
 
-  server.get("/service-worker.js", (req, res) => {
-    app.serveStatic(req, res, "./.next/service-worker.js");
+  socket.on("join", (data, callback) => {
+    const { error, user } = addUser({
+      id: socket.id,
+      name: data.name,
+      room: data.room,
+      signalRoom: data.signalRoom
+    });
+    if (error) return callback(error);
+
+    socket.emit("message", {
+      user: "admin",
+      text: `${user.name}, welcome to the room ${user.room}`
+    });
+
+    socket.broadcast.to(user.room).emit("message", {
+      user: "admin",
+      text: `New client in the + ${user.room} room`
+    });
+    socket.join(user.room);
+    socket.join(user.signalRoom);
+
+    callback();
   });
 
-  server.get("/favicon.ico", (req, res) => {
-    app.serveStatic(req, res, "./public/static/favicon.ico");
+  socket.on("sendMessage", (data, callback) => {
+    const user = getUser(socket.id);
+
+    io.to(user.room).emit("message", { user: user.name, text: data });
+
+    callback();
   });
 
-  server.get("/pwa.png", (req, res) => {
-    app.serveStatic(req, res, "./public/static/pwa.png");
+  socket.on("signal", data => {
+    const user = getUser(socket.id);
+
+    console.log(data);
+
+    // if (existingRoom(user.signalRoom).length > 1)
+    // 자기 자신 제외 송출
+    socket.broadcast.to(user.signalRoom).emit("signaling_message", {
+      type: data.type,
+      message: data.message
+    });
+
+    // 자신을 포함한 송출
+    // io.to(user.signalRoom).emit("signaling_message", {
+    //   type: data.type,
+    //   message: data.message
+    // });
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User had left!!!");
+  });
+});
+
+nextApp.prepare().then(() => {
+  app.get("/service-worker.js", (req, res) => {
+    nextApp.serveStatic(req, res, "./.next/service-worker.js");
+  });
+
+  app.get("/favicon.ico", (req, res) => {
+    nextApp.serveStatic(req, res, "./public/static/favicon.ico");
+  });
+
+  app.get("/pwa.png", (req, res) => {
+    nextApp.serveStatic(req, res, "./public/static/pwa.png");
   });
 
   const serviceWorkers = [
@@ -39,12 +101,12 @@ app.prepare().then(() => {
   ];
 
   serviceWorkers.forEach(({ filename, path }) => {
-    server.get(`/${filename}`, (req, res) => {
-      app.serveStatic(req, res, path);
+    app.get(`/${filename}`, (req, res) => {
+      nextApp.serveStatic(req, res, path);
     });
   });
 
-  server.get("*", (req, res) => {
+  app.get("*", (req, res) => {
     return handler(req, res);
   });
 
@@ -53,37 +115,3 @@ app.prepare().then(() => {
     console.log(`> Ready on http://localhost:${port}`);
   });
 });
-
-// app.prepare().then(() => {
-//   createServer((req, res) => {
-//     const parsedUrl = parse(req.url, true);
-
-//     const rootStaticFiles = ["/favicon.ico", "pwa.png"];
-
-//     if (rootStaticFiles.indexOf(parsedUrl.pathname) > -1) {
-//       const path = join(__dirname, "public", parsedUrl.pathname);
-//       app.serveStatic(req, res, path);
-//     } else if (parsedUrl.pathname === "/firebase-messaging-sw.js") {
-//       const path = join(__dirname, "public", "/firebase-messaging-sw.js");
-//       if (!!res.sendFile) {
-//         res.sendFile(join(__dirname, "public", path));
-//         app.serveStatic(req, res, path);
-//       } else {
-//         handler(req, res, parsedUrl);
-//       }
-//     } else if (parsedUrl.pathname === "/service-worker.js") {
-//       const path = join(__dirname, ".next", "/service-worker.js");
-//       if (!!res.sendFile) {
-//         res.sendFile(join(__dirname, ".next", path));
-//         app.serveStatic(req, res, path);
-//       } else {
-//         handler(req, res, parsedUrl);
-//       }
-//     } else {
-//       handler(req, res, parsedUrl);
-//     }
-//   }).listen(port, err => {
-//     if (err) throw err;
-//     console.log(`> Ready on http://localhost:${port}`);
-//   });
-// });
