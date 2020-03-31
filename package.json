@@ -32,7 +32,7 @@
     "graphql-tag": "^2.10.1",
     "isomorphic-unfetch": "^3.0.0",
     "localforage": "^1.7.3",
-    "next": "^9.2.1",
+    "next": "^9.3.2",
     "next-offline": "^5.0.0",
     "next-optimized-images": "^2.5.4",
     "next-redux-saga": "^4.1.2",
